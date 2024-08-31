@@ -1,0 +1,27 @@
+name: therapify
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  smooth_page_indicator: ^1.0.0
+  google_fonts: ^4.0.0
+  cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  assets:
+    - assets/ob1.png
+    - assets/ob2.png
+    - assets/ob3.png
