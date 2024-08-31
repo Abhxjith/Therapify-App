@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:slide_to_act/slide_to_act.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:async';
 
 void main() {
   runApp(MyApp());
@@ -34,17 +38,84 @@ final ThemeData appTheme = ThemeData(
     },
   ),
   visualDensity: VisualDensity.adaptivePlatformDensity,
-  textTheme: GoogleFonts.interTextTheme(),  // Using Inter font
+  textTheme: GoogleFonts.interTextTheme(),
 );
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _showTip = false;
+  String _tip = '';
+  final List<String> _tips = [
+    'Take a deep breath and smile.',
+    'Remember to stay hydrated.',
+    'Try to get at least 30 minutes of exercise daily.',
+    'Take a break and listen to your favorite music.',
+    'Practice mindfulness for a few minutes each day.',
+  ];
+
+  void _showRandomTip() {
+    setState(() {
+      _tip = (_tips..shuffle()).first;
+      _showTip = true;
+    });
+
+    Timer(Duration(seconds: 2), () {
+      setState(() {
+        _showTip = false;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFF7F7F7),
       appBar: AppBar(
-        title: Text('Hey,', style: TextStyle(fontSize: 20)),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hey,',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  "What Happened?",
+                  style: TextStyle(
+                    color: appTheme.primaryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: FaIcon(
+              FontAwesomeIcons.bell,
+              color: appTheme.primaryColor,
+            ),
+            onPressed: () {
+              // Action to perform when the notification icon is pressed
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -52,70 +123,77 @@ class HomePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "What Happened?",
-                style: TextStyle(
-                  color: appTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24,
-                ),
-              ),
-              SizedBox(height: 16),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Color(0xFFE0F7F7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.tips_and_updates, color: appTheme.primaryColor, size: 32),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        "Tips by Doctor X",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 16),
-              GestureDetector(
-                onTap: () {},
+              SizedBox(height: 11),
+              InkWell(
+                onTap: _showRandomTip,
                 child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.all(16),
+                  height: 90,
                   decoration: BoxDecoration(
-                    color: Color(0xFFB3ECEC),
+                    color: Color(0xFF80D2D2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Text(
-                      "Swipe to start your session",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 18,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "  Tips by Doctor X",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 20,
+                          ),
+                        ),
                       ),
-                    ),
+                      SizedBox(width: 16),
+                      SvgPicture.asset(
+                        'assets/meditation.svg',
+                        height: 64,
+                      )
+                    ],
                   ),
                 ),
               ),
-              SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildOptionCard(Icons.chat_bubble, "Talk with Theera"),
-                  _buildOptionCard(Icons.chat, "Chat with Theera"),
-                ],
+              SizedBox(height: 16),
+              SlideAction(
+                height: 55,
+                elevation: 0,
+                text: "        Slide to start your session",
+                textStyle: TextStyle(
+                  color: appTheme.primaryColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                ),
+                innerColor: appTheme.primaryColor,
+                outerColor: Color(0xFFE0F7F7),
+                sliderButtonYOffset: 0,
+                borderRadius: 11,
+                sliderButtonIcon: Container(
+                  width: 25,
+                  height: 25,
+                  decoration: BoxDecoration(
+                    color: appTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: FaIcon(
+                      FontAwesomeIcons.angleRight,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                onSubmit: () {
+                  // Action to perform after sliding
+                },
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 25),
+              _buildDashboard(),
+              SizedBox(height: 20),
               Text(
                 "Nearby Therapists",
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -129,25 +207,103 @@ class HomePage extends StatelessWidget {
                   _buildTherapistCard(),
                 ],
               ),
-              SizedBox(height: 24),
-              Text(
-                "How do you feel today?",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 16),
+              SizedBox(height: 27),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(5, (index) {
-                  return Icon(
-                    Icons.emoji_emotions,
-                    color: index == 4 ? Colors.red : Colors.yellow,
-                    size: 36,
-                  );
-                }),
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildOptionCard(
+                    FontAwesomeIcons.phoneAlt,
+                    "Talk with Theera",
+                  ),
+                  SizedBox(width: 17),
+                  _buildOptionCard(
+                    FontAwesomeIcons.comments,
+                    "Chat with Theera",
+                  ),
+                ],
               ),
+              SizedBox(height: 27),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          "How do you feel today?",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                        SizedBox(height: 9),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            FaIcon(
+                              FontAwesomeIcons.smile,
+                              color: Colors.yellow,
+                              size: 36,
+                            ),
+                            FaIcon(
+                              FontAwesomeIcons.smileBeam,
+                              color: Colors.yellow,
+                              size: 36,
+                            ),
+                            FaIcon(
+                              FontAwesomeIcons.smile,
+                              color: Colors.yellow,
+                              size: 36,
+                            ),
+                            FaIcon(
+                              FontAwesomeIcons.frownOpen,
+                              color: Colors.red,
+                              size: 36,
+                            ),
+                            FaIcon(
+                              FontAwesomeIcons.frown,
+                              color: Colors.red,
+                              size: 36,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+              if (_showTip) ...[
+                AnimatedOpacity(
+                  opacity: _showTip ? 1.0 : 0.0,
+                  duration: Duration(milliseconds: 500),
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    margin: EdgeInsets.only(top: 16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF80D2D2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _tip,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -164,37 +320,138 @@ class HomePage extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
+              color: Colors.black26,
+              blurRadius: 4,
+              offset: Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: appTheme.primaryColor, size: 32),
-            SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
+        child: InkWell(
+          onTap: () {
+            // Add action when tapped
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              FaIcon(icon, color: appTheme.primaryColor, size: 32),
+              SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTherapistCard() {
-    return CircleAvatar(
-      radius: 32,
-      backgroundColor: Color(0xFF80E0E0),
-      child: CircleAvatar(
-        radius: 30,
-        backgroundImage: AssetImage('assets/therapist.jpg'),
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: Color(0xFF80E0E0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: appTheme.primaryColor,
+          width: 2,
+        ),
       ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.asset(
+          'assets/therapist.png',
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboard() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Dashboard',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildDashboardItem(
+                'Total Sessions',
+                '12',
+                FontAwesomeIcons.calendarCheck,
+              ),
+              _buildDashboardItem(
+                'Progress',
+                '85%',
+                FontAwesomeIcons.chartLine,
+              ),
+              _buildDashboardItem(
+                'Goals Met',
+                '5/6',
+                FontAwesomeIcons.flagCheckered,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardItem(String title, String value, IconData icon) {
+    return Column(
+      children: [
+        FaIcon(
+          icon,
+          color: appTheme.primaryColor,
+          size: 36,
+        ),
+        SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: appTheme.primaryColor,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.black54,
+          ),
+        ),
+      ],
     );
   }
 }

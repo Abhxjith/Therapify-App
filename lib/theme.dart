@@ -10,7 +10,7 @@ final ThemeData appTheme = ThemeData(
       200: Color(0xFF80E0E0),
       300: Color(0xFF4DD4D4),
       400: Color(0xFF26C9C9),
-      500: Color(0xFF269D9D),  // Your main color
+      500: Color(0xFF218F8F),  // Your main color
       600: Color(0xFF238E8E),
       700: Color(0xFF1F7C7C),
       800: Color(0xFF1A6A6A),
