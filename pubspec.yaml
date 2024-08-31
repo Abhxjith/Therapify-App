@@ -14,6 +14,12 @@ dependencies:
   google_fonts: ^4.0.0
   cupertino_icons: ^1.0.8
   font_awesome_flutter: ^10.0.0
+  slide_to_act: ^2.0.0 
+  flutter_svg: ^1.1.0
+  percent_indicator: ^4.0.1
+  flutter_blurhash: ^0.7.0
+  shimmer: ^2.0.0
+  blur: ^4.0.0
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +31,5 @@ flutter:
     - assets/ob1.png
     - assets/ob2.png
     - assets/ob3.png
+    - assets/meditation.svg
+    - assets/therapist.png

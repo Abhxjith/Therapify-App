@@ -27,6 +27,7 @@ class _NavbarState extends State<Navbar> {
     ];
 
     return Scaffold(
+      backgroundColor: Color(0xFFFCFCFC), // Set the background color to FCFCFC
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
@@ -48,6 +49,10 @@ class _NavbarState extends State<Navbar> {
         unselectedItemColor: Colors.grey, // Optional: color for unselected items
         onTap: _onItemTapped,
         iconSize: 24, // Optional: you can also set this to control the overall icon size
+        backgroundColor: Color(0xFFFCFCFC), // Set the background color for the BottomNavigationBar
+        type: BottomNavigationBarType.fixed, // To ensure all items are shown properly
+        showSelectedLabels: true, // Optional: Show or hide labels for selected items
+        showUnselectedLabels: true, // Optional: Show or hide labels for unselected items
       ),
     );
   }
