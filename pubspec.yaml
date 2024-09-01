@@ -20,11 +20,18 @@ dependencies:
   flutter_blurhash: ^0.7.0
   shimmer: ^2.0.0
   blur: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: "^0.13.1"
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/1.png"
 
 flutter:
   assets:
