@@ -5,6 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'dart:math';
+import 'talk_to_theera.dart';
+import 'chat_with_theera.dart';
 
 void main() {
   runApp(MyApp());
@@ -155,7 +157,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     onTap: _showRandomTip,
                     child: Container(
                       padding: EdgeInsets.all(16),
-                      height: 90,
+                      height: 80,
                       decoration: BoxDecoration(
                         color: Color(0xFF80D2D2),
                         borderRadius: BorderRadius.circular(12),
@@ -211,8 +213,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       ),
                     ),
                     onSubmit: () {
-                      // Action to perform after sliding
-                    },
+  // Navigate to TalkToTheeraScreen upon sliding
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => TalkToTheeraScreen()),
+  );
+},
                   ),
                   SizedBox(height: 25),
                   _buildDashboard(),
@@ -395,47 +401,59 @@ style: ElevatedButton.styleFrom(
     );
   }
 
-  Widget _buildOptionCard(IconData icon, String title) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 4,
-              offset: Offset(0, 2),
+Widget _buildOptionCard(IconData icon, String title) {
+  return Expanded(
+    child: Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          if (title == 'Talk with Theera') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => TalkToTheeraScreen()),
+            );
+          } else if (title == 'Chat with Theera') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ChatWithTheeraScreen()),
+            );
+          }
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            FaIcon(icon, color: appTheme.primaryColor, size: 32),
+            SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
-        child: InkWell(
-          onTap: () {
-            // Add action when tapped
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              FaIcon(icon, color: appTheme.primaryColor, size: 32),
-              SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   Widget _buildTherapistCard() {
     return Container(
