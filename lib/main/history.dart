@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class HistoryPage extends StatefulWidget {
   @override
@@ -83,7 +84,7 @@ class _HistoryPageState extends State<HistoryPage> {
               controller: searchController,
               decoration: InputDecoration(
                 labelText: 'Search',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(FontAwesomeIcons.search), // FontAwesome search icon
                 border: OutlineInputBorder(),
               ),
             ),
