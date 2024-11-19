@@ -75,6 +75,21 @@ The project uses the following packages:
 - [Font Awesome Flutter](https://pub.dev/packages/font_awesome_flutter) (Icons)
 - [Flutter Secure Storage](https://pub.dev/packages/flutter_secure_storage) (Secure Data Storage)
 
+## Snapshots
+
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/009b7f89-8581-4323-b2e4-659756f2ba69">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/8c8c03da-2355-49f4-a351-3d1a2fbe0e97">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/28595fbc-624a-454c-aeda-4f873ec88043">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/a366e3ac-0f83-4d86-9378-9977a838b251">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/e0f6a962-9a5d-4ad4-b3d7-31751b97dd9d">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/d1579b37-9a68-412e-bdcc-e4f7fec27e04">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/1d090321-28e2-4bc0-8eff-6078fc420947">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/ab98cf5d-268a-45e5-b41c-95e71f454543">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/d82da028-6842-4c85-bcc1-3072523da5a5">
+<img width="360" alt="image" src="https://github.com/user-attachments/assets/b9304377-4012-4c40-b3bc-4c144df67035">
+
+
+
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -83,6 +98,7 @@ Contributions are welcome! Please follow these steps:
 2. Create a new branch for your feature/bug fix.
 3. Commit your changes with detailed commit messages.
 4. Push your branch and create a pull request.
+
 
 ## Contact
 
