@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // Import Font Awesome icons
-import 'package:therapify/theme.dart'; 
+import 'package:therapify/theme.dart';
 import 'registration.dart';
 import 'package:therapify/main/navbar.dart'; // Import Navbar
 
@@ -11,11 +11,31 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
+  bool _isLoading = false;
 
   void _togglePasswordView() {
     setState(() {
       _obscureText = !_obscureText;
     });
+  }
+
+  Future<void> _onLoginPressed() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    await Future.delayed(Duration(seconds: 1));
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Navbar(), // Navigate to Navbar
+      ),
+    );
   }
 
   @override
@@ -61,8 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: Icon(
                       _obscureText
                           ? FontAwesomeIcons.eye
-                          : FontAwesomeIcons.eye,
-                      size: 20.0, // Adjust the size here
+                          : FontAwesomeIcons.eyeSlash,
+                      size: 20.0,
                     ),
                     onPressed: _togglePasswordView,
                   ),
@@ -80,31 +100,30 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 160.0),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Navbar(), // Navigate to Navbar
+              _isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.teal, // Set loader color to teal
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: _onLoginPressed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: appTheme.primaryColor,
+                        padding: EdgeInsets.symmetric(vertical: 14.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      child: Text(
+                        'Login',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16.0,
+                          fontFamily: 'Lato',
+                        ),
+                      ),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: appTheme.primaryColor, // Use backgroundColor instead of primary
-                  padding: EdgeInsets.symmetric(vertical: 14.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                child: Text(
-                  'Login',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.0,
-                    fontFamily: 'Lato',
-                  ),
-                ),
-              ),
               SizedBox(height: 16.0),
               Align(
                 alignment: Alignment.center,

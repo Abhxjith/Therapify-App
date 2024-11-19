@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class TalkToTheeraScreen extends StatefulWidget {
   @override
@@ -13,11 +14,17 @@ class TalkToTheeraScreen extends StatefulWidget {
 
 class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
     with SingleTickerProviderStateMixin {
-  final String apiUrl = 'http://localhost:8000';
+  final String apiKey = 'AIzaSyANL6EVg3e7yuJmBV70m8v_LwKgyohx_h8'; // Change this
+  late GenerativeModel model;
+  final FlutterTts flutterTts = FlutterTts();
   final AudioPlayer _audioPlayer = AudioPlayer();
+  
   bool isListening = true;
   bool isPaused = false;
-
+  bool isSpeaking = false;
+  String? lastResponse;
+  String currentText = '';
+  
   late AnimationController _controller;
 
   @override
@@ -27,74 +34,109 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
       duration: const Duration(seconds: 1),
       vsync: this,
     )..repeat(reverse: true);
+    
+    model = GenerativeModel(
+      model: 'gemini-pro',
+      apiKey: apiKey,
+    );
+    
+    _initTts();
     listenAndRespond();
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setLanguage("en-US");
+    await flutterTts.setSpeechRate(0.4);
+    await flutterTts.setVolume(1.0);
+    await flutterTts.setPitch(1.0);
+
+    flutterTts.setStartHandler(() {
+      setState(() {
+        isSpeaking = true;
+      });
+    });
+
+    flutterTts.setCompletionHandler(() {
+      setState(() {
+        isSpeaking = false;
+      });
+      if (isListening && !isPaused) {
+        Future.delayed(Duration(seconds: 2), listenAndRespond);
+      }
+    });
+
+    flutterTts.setErrorHandler((msg) {
+      setState(() {
+        isSpeaking = false;
+      });
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $msg")),
+      );
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _audioPlayer.dispose();
+    flutterTts.stop();
     super.dispose();
   }
 
   Future<void> listenAndRespond() async {
-    while (isListening) { // Ensure the loop continues while listening
-      try {
-        final response = await http.get(Uri.parse('$apiUrl/listen-and-respond'));
+    if (isSpeaking || isPaused) return;
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = jsonDecode(response.body);
-          final String? responseText = data['response'] as String?;
-          final String? audioBase64 = data['audio'] as String?;
+    // Capture user input here (could be from a voice input or button press)
 
-          print('Response Text: $responseText');
-          print('Audio Base64: ${audioBase64?.substring(0, 30)}...'); // Print the first 30 characters of the audio data
+    try {
+      final content = [
+        Content.text(
+          'You are Theera, a friendly AI therapist. Give brief responses (1-2 sentences).' +
+          (lastResponse != null ? ' Previous response: $lastResponse' : '')
+        )
+      ];
 
-          if (audioBase64 != null && audioBase64.isNotEmpty) {
-            final audioBytes = base64Decode(audioBase64);
-            final directory = await getTemporaryDirectory();
-            final filePath = '${directory.path}/response.mp3';
-            final responseFile = File(filePath);
-            await responseFile.writeAsBytes(audioBytes);
-            await _audioPlayer.play(responseFile.path, isLocal: true);
-            
-            setState(() {
-              // Do not stop listening; continue the loop
-            });
-          } else {
-            print('Audio data is null or empty');
-          }
-        } else {
-          print('Failed to get response from server. Status code: ${response.statusCode}');
-        }
+      final response = await model.generateContent(content);
+      final responseText = response.text;
 
-        // Optionally, add a small delay before the next request
-        await Future.delayed(Duration(seconds: 1));
-
-      } catch (e) {
-        print('Error in communication with the server: $e');
+      if (responseText != null && !isPaused && mounted) {
+        setState(() {
+          lastResponse = responseText;
+          currentText = responseText;
+        });
+        await flutterTts.speak(responseText);
       }
+    } catch (e) {
+      print('Error communicating with Gemini API: $e');
+      await Future.delayed(Duration(seconds: 5));
     }
   }
 
-  void pauseListening() {
+  void pauseListening() async {
     if (isPaused) {
-      _audioPlayer.resume();
+      if (currentText.isNotEmpty && !isSpeaking) {
+        setState(() {
+          isPaused = false;
+        });
+        await flutterTts.speak(currentText);
+      }
     } else {
-      _audioPlayer.pause();
+      await flutterTts.stop();
+      setState(() {
+        isPaused = true;
+        isSpeaking = false;
+      });
     }
-    setState(() {
-      isPaused = !isPaused;
-    });
   }
 
-  void cancelListening() {
-    _audioPlayer.stop();
+  void cancelListening() async {
+    await flutterTts.stop();
     setState(() {
       isListening = false;
       isPaused = false;
+      isSpeaking = false;
     });
-    // Navigate back to the HomePage
     Navigator.pop(context);
   }
 
@@ -105,7 +147,6 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
       body: Stack(
         alignment: Alignment.center,
         children: [
-          // Center the AnimatedBuilder
           Center(
             child: AnimatedBuilder(
               animation: _controller,
@@ -121,45 +162,13 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
               },
             ),
           ),
-          if (isListening) ...[
-            // Dots indicating listening
-            Positioned(
-              bottom: 120,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                    ),
-                  );
-                }),
-              ),
+          Positioned(
+            bottom: 100,
+            child: Text(
+              isPaused ? 'Paused' : (isSpeaking ? 'Speaking' : 'Listening'),
+              style: TextStyle(color: Colors.white),
             ),
-            Positioned(
-              bottom: 100,
-              child: Text(
-                'Listening',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ] else ...[
-            // Tap to cancel text
-            Positioned(
-              bottom: 100,
-              child: Text(
-                'Tap to cancel',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-          // Pause and Cancel Buttons
+          ),
           Positioned(
             bottom: 20,
             child: Row(

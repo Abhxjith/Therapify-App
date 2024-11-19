@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'splash.dart';  
 import 'theme.dart';  
 
-void main() {
+void main() async {
   runApp(MyApp());
 }
 

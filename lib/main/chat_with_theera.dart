@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+
+// Add this constant at the top of your file
+const String GEMINI_API_KEY = 'AIzaSyANL6EVg3e7yuJmBV70m8v_LwKgyohx_h8';
+const String GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 class ChatWithTheeraScreen extends StatefulWidget {
   @override
@@ -10,87 +15,101 @@ class ChatWithTheeraScreen extends StatefulWidget {
 }
 
 class _ChatWithTheeraScreenState extends State<ChatWithTheeraScreen> {
-  // A list to hold chat messages
   List<Map<String, dynamic>> messages = [
-    {"isUser": false, "message": "Hello! How can I assist you today?"},
+    {"isUser": false, "message": "Hey! What brings you here?"},
   ];
 
-  // A TextEditingController to control the message input field
   final TextEditingController _messageController = TextEditingController();
-
-  // ScrollController to manage scrolling
   final ScrollController _scrollController = ScrollController();
 
-  // Function to send a message to the API and get a response
+  // Function to call Gemini API
+  Future<String> _getGeminiResponse(String userMessage) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$GEMINI_API_URL?key=$GEMINI_API_KEY'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "contents": [{
+          "parts": [{
+            "text": "You are Theera, an Indian therapist with 20 years of experience. Respond to the user as though you are a human therapist in a calm, conversational manner, expressing genuine concern and understanding. Avoid introducing yourself repeatedly. Focus on providing thoughtful, empathetic responses that encourage the user to share their feelings. User: $userMessage"
+          }]
+        }],
+        "generationConfig": {
+          "temperature": 0.85,
+          "topK": 40,
+          "topP": 0.95,
+          "maxOutputTokens": 1024,
+        }
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final decodedResponse = jsonDecode(response.body);
+      return decodedResponse['candidates'][0]['content']['parts'][0]['text'];
+    } else {
+      throw Exception('Failed to get response from llama API: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error calling llama API: $e');
+    return 'I’m here to listen. Please feel free to share your thoughts.';
+  }
+}
+
+
+  // Function to send a message and receive a response
   Future<void> _sendMessage() async {
     String userMessage = _messageController.text.trim();
     if (userMessage.isEmpty) return;
 
-    // Add the user's message to the chat list
     setState(() {
       messages.add({"isUser": true, "message": userMessage});
     });
 
-    // Clear the input field
     _messageController.clear();
-
-    // Replace with your API endpoint URL
-    const apiUrl = 'http://127.0.0.1:8000/therapist'; 
-
-    // Prepare request payload
-    var requestBody = jsonEncode({
-      "context": messages.map((msg) => msg["message"]).toList(),
-      "question": userMessage,
-    });
+    _scrollToBottom();
 
     try {
-      // Send POST request to the API
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: requestBody,
-      );
-
-      // If the request is successful, get the response message
-      if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
-        String responseMessage = data['answer'];
-
-        // Add the API response to the chat list
-        setState(() {
-          messages.add({"isUser": false, "message": responseMessage});
-        });
-
-        // Scroll to the bottom
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      } else {
-        // Handle errors
-        setState(() {
-          messages.add({
-            "isUser": false,
-            "message": "Something went wrong. Please try again later."
-          });
-        });
-      }
-    } catch (e) {
-      // Handle network errors
+      // Show typing indicator
       setState(() {
+        messages.add({"isUser": false, "message": "typing...", "isTyping": true});
+      });
+      _scrollToBottom();
+
+      // Get response from Gemini
+      String responseMessage = await _getGeminiResponse(userMessage);
+
+      // Remove typing indicator and add actual response
+      setState(() {
+        messages.removeWhere((message) => message['isTyping'] == true);
+        messages.add({"isUser": false, "message": responseMessage});
+      });
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        messages.removeWhere((message) => message['isTyping'] == true);
         messages.add({
           "isUser": false,
-          "message": "Network error. Please check your connection."
+          "message": "Something went wrong. Please try again later."
         });
       });
     }
   }
 
-  // Widget to build the chat bubbles
-  Widget _buildMessageBubble(String message, bool isUser) {
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Widget _buildMessageBubble(String message, bool isUser, {bool isTyping = false}) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -105,22 +124,44 @@ class _ChatWithTheeraScreenState extends State<ChatWithTheeraScreen> {
             bottomRight: isUser ? Radius.zero : Radius.circular(16),
           ),
         ),
-        child: Text(
-          message,
-          style: TextStyle(
-            color: isUser ? Colors.white : Colors.black,
-            fontSize: 16,
-          ),
-        ),
+        child: isTyping
+            ? SizedBox(
+                width: 40,
+                height: 20,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(
+                    3,
+                    (index) => _buildDot(),
+                  ),
+                ),
+              )
+            : Text(
+                message,
+                style: TextStyle(
+                  color: isUser ? Colors.white : Colors.black,
+                  fontSize: 16,
+                ),
+              ),
       ),
     );
   }
 
-  // Custom back button widget
+  Widget _buildDot() {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: Colors.grey,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
   Widget _buildBackButton() {
     return IconButton(
       icon: Icon(
-        FontAwesomeIcons.arrowLeft, // Font Awesome back icon
+        FontAwesomeIcons.arrowLeft,
         color: Colors.white,
       ),
       onPressed: () {
@@ -144,34 +185,32 @@ class _ChatWithTheeraScreenState extends State<ChatWithTheeraScreen> {
         ),
         centerTitle: true,
         elevation: 2,
-        leading: _buildBackButton(), // Custom back button
+        leading: _buildBackButton(),
       ),
       body: Column(
         children: [
-          // Chat messages list with bottom padding
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 0), // Add bottom padding
+              padding: const EdgeInsets.only(bottom: 0),
               child: ListView.builder(
                 controller: _scrollController,
                 padding: EdgeInsets.all(8),
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
+                  final message = messages[index];
                   return _buildMessageBubble(
-                    messages[index]["message"],
-                    messages[index]["isUser"],
+                    message["message"],
+                    message["isUser"],
+                    isTyping: message['isTyping'] ?? false,
                   );
                 },
               ),
             ),
           ),
-
-          // Input field for typing new messages
           Padding(
             padding: const EdgeInsets.all(25.0),
             child: Row(
               children: [
-                // Text field for message input
                 Expanded(
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 14),
@@ -190,15 +229,13 @@ class _ChatWithTheeraScreenState extends State<ChatWithTheeraScreen> {
                   ),
                 ),
                 SizedBox(width: 10),
-
-                // Send button with Font Awesome icon
                 GestureDetector(
                   onTap: _sendMessage,
                   child: CircleAvatar(
                     backgroundColor: Color(0xFF269D9D),
                     radius: 25,
                     child: FaIcon(
-                      FontAwesomeIcons.paperPlane, // Font Awesome icon
+                      FontAwesomeIcons.paperPlane,
                       color: Colors.white,
                     ),
                   ),

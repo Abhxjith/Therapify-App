@@ -24,6 +24,24 @@
     <string>$(FLUTTER_BUILD_NUMBER)</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    
+    <!-- Permission keys for audio, speech, and Bluetooth -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Therapify needs access to your microphone to enable voice conversations with the AI therapist.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Therapify needs speech recognition to understand and respond to your voice input during therapy sessions.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Therapify needs Bluetooth access to connect with audio devices for better voice communication.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Therapify uses Bluetooth to connect with audio devices for enhanced voice quality.</string>
+    
+    <!-- Background audio mode -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+        <string>bluetooth-central</string>
+    </array>
+    
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
     <key>UIMainStoryboardFile</key>
@@ -45,8 +63,5 @@
     <true/>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
-    <!-- Add this key for microphone usage description -->
-    <key>NSMicrophoneUsageDescription</key>
-    <string>This app uses the microphone to enable voice input and enhance user experience.</string>
 </dict>
 </plist>
