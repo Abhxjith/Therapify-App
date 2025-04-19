@@ -1,0 +1,77 @@
+name: therapify
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  smooth_page_indicator: ^1.0.0
+  google_fonts: ^4.0.0
+  cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.0.0
+  slide_to_act: ^2.0.0 
+  flutter_svg: ^1.1.0
+  percent_indicator: ^4.0.1
+  flutter_blurhash: ^0.7.0
+  shimmer: ^2.0.0
+  blur: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  http: ^1.1.0
+  speech_to_text: ^7.0.0
+  audioplayers: ^6.1.0
+  flutter_tts: ^3.2.0
+  web_socket_channel: ^2.1.0
+  google_generative_ai: ^0.4.0
+  googleapis: ^12.0.0
+  googleapis_auth: ^1.4.1
+  flutter_dotenv: ^5.0.2
+  path_provider: ^2.1.1
+  flutter_sound: ^9.2.13
+  permission_handler: ^11.0.0
+  url_launcher: ^6.1.14
+  intl: ^0.18.0
+  shared_preferences: ^2.2.2
+  lottie: ^2.6.0
+  logger: ^2.0.2+1
+  noise_meter: ^4.0.1
+  flutter_isolate: ^2.0.4
+  just_audio: ^0.9.36
+  flutter_audio_waveforms: ^1.2.0
+  path: ^1.8.3
+  dio: ^5.3.2
+  flutter_local_notifications: ^19.0.0
+  timezone: ^0.10.0
+  audio_session: ^0.1.18
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^3.0.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/1.png"
+  adaptive_icon_background: "#2A9D8F"
+  adaptive_icon_foreground: "assets/1.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+
+flutter:
+  assets:
+    - assets/1.png
+    - assets/ob1.png
+    - assets/ob2.png
+    - assets/ob3.png
+    - assets/meditation.svg
+    - assets/therapist.png
+    - assets/tick.json
+    - assets/happy.json
+    - assets/celebration.json
+    - assets/audio/
