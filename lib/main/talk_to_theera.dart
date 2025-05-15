@@ -69,6 +69,11 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
   // Add messages variable to store conversation history
   List<Map<String, dynamic>> messages = [];
   
+  // Add new variable to track consecutive no responses
+  int _consecutiveNoResponses = 0;
+  // Add pending session end confirmation flag
+  bool _pendingSessionEndConfirmation = false;
+  
   @override
   void initState() {
     super.initState();
@@ -263,8 +268,8 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
               }
             }
           },
-          listenFor: Duration(seconds: 20),
-          pauseFor: Duration(seconds: 2),
+          listenFor: Duration(seconds: 30),
+          pauseFor: Duration(seconds: 10),
           partialResults: true,
           cancelOnError: true,
           localeId: 'en_US',
@@ -296,11 +301,43 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
 
   void _startSilenceTimer() {
     _silenceTimer?.cancel();
-    _silenceTimer = Timer(Duration(seconds: 1), () {  // Reduced to 1 second
-      if (isListening && !isSpeaking && _lastRecognizedText.isNotEmpty) {
-        _processUserSpeech(_lastRecognizedText);
+    _silenceTimer = Timer(Duration(seconds: 3), () {
+      if (isListening && !isSpeaking) {
+        if (_lastRecognizedText.isNotEmpty) {
+          _processUserSpeech(_lastRecognizedText);
+          _consecutiveNoResponses = 0;  // Reset counter when user speaks
+        } else {
+          _handleNoResponse();
+        }
       }
     });
+  }
+
+  void _handleNoResponse() async {
+    if (!mounted || isSpeaking || !_isConversationActive) return;
+    
+    _consecutiveNoResponses++;
+    
+    String prompt;
+    if (_consecutiveNoResponses == 1) {
+      prompt = "It's okay to take your time. I'm here to listen whenever you're ready.";
+    } else if (_consecutiveNoResponses == 2) {
+      prompt = "Would you like to share what's on your mind? I'm here to support you.";
+    } else {
+      prompt = "Sometimes it's hard to find the right words. Would you like to try a different approach?";
+      _consecutiveNoResponses = 0;  // Reset after third attempt
+    }
+    
+    setState(() {
+      currentText = prompt;
+    });
+    
+    await _speakResponse(prompt);
+    
+    // Continue listening after the prompt
+    if (mounted && !isPaused && _isConversationActive) {
+      _startListening();
+    }
   }
 
   void _resetSilenceTimer() {
@@ -366,19 +403,76 @@ class _TalkToTheeraScreenState extends State<TalkToTheeraScreen>
         }
       }
 
+      // Get last 5 words from user message
+      List<String> words = userMessage.split(' ');
+      String lastTopic = words.length > 5 
+          ? words.sublist(words.length - 5).join(' ')
+          : userMessage;
+
+      // Check if user wants to end session
+      bool wantsToEndSession = userMessage.toLowerCase().contains('end session') || 
+                             userMessage.toLowerCase().contains('want to end') ||
+                             userMessage.toLowerCase().contains('finish session') ||
+                             userMessage.toLowerCase().contains('stop session') ||
+                             userMessage.toLowerCase().contains('bye') ||
+                             userMessage.toLowerCase().contains('goodbye') ||
+                             userMessage.toLowerCase().contains('i\'m done') ||
+                             userMessage.toLowerCase().contains('im done') ||
+                             userMessage.toLowerCase().contains('that\'s all') ||
+                             userMessage.toLowerCase().contains('thats all');
+
+      // If user wants to end session, ask for confirmation
+      if (wantsToEndSession) {
+        // Check if this is a confirmation response
+        bool isConfirmation = userMessage.toLowerCase().contains('yes') || 
+                            userMessage.toLowerCase().contains('sure') ||
+                            userMessage.toLowerCase().contains('okay') ||
+                            userMessage.toLowerCase().contains('confirm') ||
+                            userMessage.toLowerCase().contains('yep') ||
+                            userMessage.toLowerCase().contains('yeah') ||
+                            userMessage.toLowerCase().contains('absolutely');
+
+        if (isConfirmation) {
+          // End the session immediately
+          return "END_SESSION_SAFELY: Thank you for sharing your thoughts with me today. I hope our conversation was helpful. Remember, I'm here whenever you need to talk again. Take care of yourself.";
+        } else {
+          // Ask for confirmation
+          return "I understand you want to end our session. Are you sure you want to end now? If you're sure, please respond with 'yes' or 'confirm'.";
+        }
+      }
+
       final requestBody = {
         "contents": [{
           "parts":[{
-            "text": """You are Theera, a warm and empathetic Indian therapist with 20 years of experience.
+            "text": """You are Theera, a warm and empathetic therapist with 20 years of experience. You are having a natural, flowing conversation with your client.
+
+CRITICAL REQUIREMENTS:
+1. NEVER use "Namaste" or any other greeting in your responses
+2. EVERY response MUST be detailed and comprehensive (minimum 3-4 sentences)
+3. EVERY response MUST include:
+   - Validation of the client's feelings (start with this)
+   - Therapeutic insights or reflections
+   - At least one specific, validating follow-up question
+4. NEVER give short, one-line responses
+5. Keep the conversation natural and flowing
 
 IMPORTANT GUIDELINES:
-1. Keep responses extremely concise (1-2 sentences max)
-2. Show genuine care and empathy
+1. Response Structure:
+   - Start with acknowledging and validating the client's feelings (1-2 sentences)
+   - Share your therapeutic insights and reflections (2-3 sentences)
+   - End with a specific, validating follow-up question
+2. Show genuine care and empathy in every response
 3. Be extra vigilant about safety concerns
-4. Ask only ONE question at a time
-5. Focus on active listening and brief, supportive responses
-6. Never use more than 30 words in your response
-7. Prioritize speed over elaboration
+4. Keep responses between 100-200 words
+5. Make responses feel like a natural therapy session
+6. Ask questions that are specific to what the client just shared
+7. Always end with a question that validates their experience
+8. Use validating phrases like:
+   - "I can understand why you might feel..."
+   - "That sounds really challenging..."
+   - "I hear how important this is to you..."
+   - "It makes sense that you would feel..."
+   - "I can see how that would be difficult..."
 
 $sessionContext
 
@@ -387,15 +481,15 @@ $conversationHistory
 
 The person has just said: $userMessage
 
-Respond as Theera, keeping responses extremely brief and focused:"""
+Respond as Theera with a detailed, therapeutic response that includes validation, insights, and a specific validating follow-up question:"""
           }]
         }],
         "generationConfig": {
-          "temperature": 0.7,
-          "maxOutputTokens": 50,  // Reduced token limit for faster responses
-          "topP": 0.8,
+          "temperature": 0.9,  // Increased for more natural, varied responses
+          "maxOutputTokens": 500,  // Increased for longer responses
+          "topP": 0.95,
           "topK": 40,
-          "stopSequences": ["\n", ".", "?"]  // Stop at natural sentence boundaries
+          "stopSequences": ["\n", ".", "?"]
         }
       };
       
@@ -421,9 +515,9 @@ Respond as Theera, keeping responses extremely brief and focused:"""
         
         // Clean up the response
         responseText = responseText.trim();
-        if (responseText.endsWith(".") || responseText.endsWith("?")) {
-          responseText = responseText.substring(0, responseText.length - 1);
-        }
+        
+        // Remove any generic greetings
+        responseText = responseText.replaceAll('Namaste', '').replaceAll('Namaste,', '').replaceAll('Namaste!', '');
         
         return responseText;
       } else {
@@ -431,7 +525,7 @@ Respond as Theera, keeping responses extremely brief and focused:"""
       }
     } catch (e) {
       print('Error with Gemini API: $e');
-      return 'I\'m here to listen. Would you like to tell me more?';
+      return "I hear this might be difficult to talk about. What's coming up for you as you share this?";
     }
   }
 
@@ -469,8 +563,55 @@ Respond as Theera, keeping responses extremely brief and focused:"""
         'message': speech,
       });
       
+      // --- SESSION ENDING LOGIC (STATEFUL) ---
+      bool wantsToEndSession = speech.toLowerCase().contains('end session') || 
+                              speech.toLowerCase().contains('want to end') ||
+                              speech.toLowerCase().contains('finish session') ||
+                              speech.toLowerCase().contains('stop session') ||
+                              speech.toLowerCase().contains('bye') ||
+                              speech.toLowerCase().contains('goodbye') ||
+                              speech.toLowerCase().contains('i\'m done') ||
+                              speech.toLowerCase().contains('im done') ||
+                              speech.toLowerCase().contains('that\'s all') ||
+                              speech.toLowerCase().contains('thats all');
+      bool isConfirmation = speech.toLowerCase().contains('yes') || 
+                          speech.toLowerCase().contains('sure') ||
+                          speech.toLowerCase().contains('okay') ||
+                          speech.toLowerCase().contains('confirm') ||
+                          speech.toLowerCase().contains('yep') ||
+                          speech.toLowerCase().contains('yeah') ||
+                          speech.toLowerCase().contains('absolutely');
+      if (_pendingSessionEndConfirmation && isConfirmation) {
+        setState(() {
+          currentText = "Alright, we'll wrap up for now. Thank you for opening up and spending this time with me today. If you ever want to talk again, I'll be right here. Take gentle care of yourself, and remember you're not alone.";
+        });
+        await _speakResponse(currentText);
+        _endConversation();
+        _isProcessingResponse = false;
+        _pendingSessionEndConfirmation = false;
+        return;
+      }
+      if (wantsToEndSession) {
+        setState(() {
+          currentText = "I understand you want to end our session. Are you sure you want to end now? If you're sure, please say 'yes' or 'confirm'.";
+        });
+        await _speakResponse(currentText);
+        _pendingSessionEndConfirmation = true;
+        _isProcessingResponse = false;
+        return;
+      } else {
+        _pendingSessionEndConfirmation = false;
+      }
+      // --- END SESSION ENDING LOGIC ---
+      
       // Start response generation in background
       String response = await _getGeminiResponse(speech);
+      
+      // Check for session conclusion before processing the message
+      bool shouldEndSession = response.contains("END_SESSION_SAFELY:");
+      
+      // Remove the end session marker from the message
+      response = response.replaceAll("END_SESSION_SAFELY:", "").trim();
       
       // Add AI response to messages
       messages.add({
@@ -491,7 +632,13 @@ Respond as Theera, keeping responses extremely brief and focused:"""
       
       _isProcessingResponse = false;
       
-      // Ensure conversation continues
+      // Handle session ending if needed
+      if (shouldEndSession) {
+        _endConversation();
+        return;
+      }
+      
+      // Ensure conversation continues only if not ending
       if (mounted && !isPaused && _isConversationActive) {
         _startListening();
       }
@@ -574,6 +721,7 @@ Respond as Theera, keeping responses extremely brief and focused:"""
       if (isSpeaking) {
         _audioPlayer.play();
       } else {
+        // Always start listening when unpausing
         _startListening();
       }
       

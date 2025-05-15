@@ -4,7 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 class ElevenLabsService {
-  static const String _apiKey = 'sk_95c3f36fb251a59b80e9de116eb0b7ce915e43c9b4a7dc0f';
+  static const String _apiKey = 'sk_572e1a4006fac077b094f86a9d9a81f5dc62ec85a4449d79';
   static const String _baseUrl = 'https://api.elevenlabs.io/v1';
   
   // Using Emily (legacy) voice - known for warm, natural, and empathetic qualities

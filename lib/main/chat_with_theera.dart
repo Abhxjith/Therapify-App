@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:math';
+import 'package:permission_handler/permission_handler.dart';
 
 // Update to use gemini-2.0-flash model
 const String GEMINI_API_KEY = 'AIzaSyABB65jOTH78JDzI1FE9oijGwrB6BvBk9Y';
@@ -27,6 +28,17 @@ const HIGH_RISK_KEYWORDS = [
   'bye forever', 'final goodbye', 'this is the end', 'ending everything',
   'last message', 'won\'t be here', 'don\'t want to live', 'going to end',
   'bye bye forever', 'no point living', 'time to go forever'
+];
+
+// Add violence against others keywords
+const VIOLENCE_AGAINST_OTHERS_KEYWORDS = [
+  'kill them', 'hurt them', 'attack them', 'going to kill', 'going to hurt',
+  'going to attack', 'will kill', 'will hurt', 'will attack', 'plan to kill',
+  'plan to hurt', 'plan to attack', 'murder them', 'shoot them', 'stab them',
+  'beat them', 'harm them', 'going to murder', 'going to shoot', 'going to stab',
+  'going to beat', 'going to harm', 'will murder', 'will shoot', 'will stab',
+  'will beat', 'will harm', 'plan to murder', 'plan to shoot', 'plan to stab',
+  'plan to beat', 'plan to harm'
 ];
 
 class ChatWithTheeraScreen extends StatefulWidget {
@@ -55,6 +67,8 @@ class _ChatWithTheeraScreenState extends State<ChatWithTheeraScreen> with Ticker
   // Add these variables to the class
   Timer? _inactivityTimer;
   bool _waitingForUserResponse = false;
+  // Add pending session end confirmation flag
+  bool _pendingSessionEndConfirmation = false;
 
   // Add this variable to track session progress
   int _sessionProgress = 0;
@@ -94,6 +108,38 @@ class _ChatWithTheeraScreenState extends State<ChatWithTheeraScreen> with Ticker
         if (i >= 0) {
           String role = messages[i]['isUser'] ? "User" : "Therapist";
           conversationHistory += "$role: ${messages[i]['message']}\n";
+        }
+      }
+
+      // Check if user wants to end session
+      bool wantsToEndSession = userMessage.toLowerCase().contains('end session') || 
+                             userMessage.toLowerCase().contains('want to end') ||
+                             userMessage.toLowerCase().contains('finish session') ||
+                             userMessage.toLowerCase().contains('stop session') ||
+                             userMessage.toLowerCase().contains('bye') ||
+                             userMessage.toLowerCase().contains('goodbye') ||
+                             userMessage.toLowerCase().contains('i\'m done') ||
+                             userMessage.toLowerCase().contains('im done') ||
+                             userMessage.toLowerCase().contains('that\'s all') ||
+                             userMessage.toLowerCase().contains('thats all');
+
+      // If user wants to end session, ask for confirmation
+      if (wantsToEndSession) {
+        // Check if this is a confirmation response
+        bool isConfirmation = userMessage.toLowerCase().contains('yes') || 
+                            userMessage.toLowerCase().contains('sure') ||
+                            userMessage.toLowerCase().contains('okay') ||
+                            userMessage.toLowerCase().contains('confirm') ||
+                            userMessage.toLowerCase().contains('yep') ||
+                            userMessage.toLowerCase().contains('yeah') ||
+                            userMessage.toLowerCase().contains('absolutely');
+
+        if (isConfirmation) {
+          // End the session immediately
+          return "Thank you for sharing your thoughts with me today. I hope our conversation was helpful. Remember, I'm here whenever you need to talk again. Take care of yourself.";
+        } else {
+          // Ask for confirmation
+          return "I understand you want to end our session. Are you sure you want to end now? If you're sure, please respond with 'yes' or 'confirm'.";
         }
       }
 
@@ -150,6 +196,95 @@ Respond as Theera, keeping in mind all safety guidelines and ensuring you only a
     String userMessage = _messageController.text.trim();
     if (userMessage.isEmpty) return;
 
+    // Check for emergency triggers
+    if (_checkEmergencyTriggers(userMessage)) {
+      _handleEmergencySituation();
+      return;
+    }
+
+    // --- SESSION ENDING LOGIC (STATEFUL) ---
+    bool wantsToEndSession = userMessage.toLowerCase().contains('end session') || 
+                            userMessage.toLowerCase().contains('want to end') ||
+                            userMessage.toLowerCase().contains('finish session') ||
+                            userMessage.toLowerCase().contains('stop session') ||
+                            userMessage.toLowerCase().contains('bye') ||
+                            userMessage.toLowerCase().contains('goodbye') ||
+                            userMessage.toLowerCase().contains('i\'m done') ||
+                            userMessage.toLowerCase().contains('im done') ||
+                            userMessage.toLowerCase().contains('that\'s all') ||
+                            userMessage.toLowerCase().contains('thats all');
+    bool isConfirmation = userMessage.toLowerCase().contains('yes') || 
+                        userMessage.toLowerCase().contains('sure') ||
+                        userMessage.toLowerCase().contains('okay') ||
+                        userMessage.toLowerCase().contains('confirm') ||
+                        userMessage.toLowerCase().contains('yep') ||
+                        userMessage.toLowerCase().contains('yeah') ||
+                        userMessage.toLowerCase().contains('absolutely');
+
+    if (_pendingSessionEndConfirmation && isConfirmation) {
+      // Add typing indicator before ending session
+      setState(() {
+        messages.add({"isUser": true, "message": userMessage});
+        messages.add({"isUser": false, "message": "typing...", "isTyping": true});
+      });
+      _scrollToBottom();
+
+      // Simulate typing time
+      await _simulateNaturalTypingTime("Alright, we'll wrap up for now. Thank you for opening up and spending this time with me today. If you ever want to talk again, I'll be right here. Take gentle care of yourself, and remember you're not alone.");
+
+      // End session immediately, skip Gemini
+      setState(() {
+        messages.removeWhere((message) => message['isTyping'] == true);
+        messages.add({"isUser": false, "message": "Alright, we'll wrap up for now. Thank you for opening up and spending this time with me today. If you ever want to talk again, I'll be right here. Take gentle care of yourself, and remember you're not alone."});
+      });
+      _scrollToBottom();
+
+      final sessionDuration = DateTime.now().difference(_sessionStartTime).inMinutes;
+      _extractTopicsFromConversation();
+      String summary = await _generateSessionSummary();
+      final report = SessionReport(
+        date: DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+        summary: summary,
+        sessionNumber: sessionCount + 1,
+        duration: sessionDuration,
+        topics: _sessionTopics,
+        therapist: "Theera",
+      );
+      await _saveSessionReport(report);
+      await _saveSessionInfo();
+      _incrementSessionCount();
+      Future.delayed(Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.pop(context);
+          _showSessionCompletionDialog(context);
+        }
+      });
+      _pendingSessionEndConfirmation = false;
+      return;
+    }
+    if (wantsToEndSession) {
+      setState(() {
+        messages.add({"isUser": true, "message": userMessage});
+        messages.add({"isUser": false, "message": "typing...", "isTyping": true});
+      });
+      _scrollToBottom();
+
+      // Simulate typing time
+      await _simulateNaturalTypingTime("I understand you want to end our session. Are you sure you want to end now?");
+
+      setState(() {
+        messages.removeWhere((message) => message['isTyping'] == true);
+        messages.add({"isUser": false, "message": "I understand you want to end our session. Are you sure you want to end now?"});
+      });
+      _messageController.clear();
+      _scrollToBottom();
+      _pendingSessionEndConfirmation = true;
+      return;
+    } else {
+      _pendingSessionEndConfirmation = false;
+    }
+    // --- END SESSION ENDING LOGIC ---
+
     setState(() {
       messages.add({"isUser": true, "message": userMessage});
     });
@@ -160,6 +295,12 @@ Respond as Theera, keeping in mind all safety guidelines and ensuring you only a
     try {
       // Get response from Gemini
       String responseMessage = await _getGeminiResponse(userMessage);
+      
+      // Check for emergency triggers in the response
+      if (_checkEmergencyTriggers(responseMessage)) {
+        _handleEmergencySituation();
+        return;
+      }
       
       // Check for session conclusion before processing the message
       bool shouldEndSession = responseMessage.contains("END_SESSION_SAFELY:");
@@ -572,15 +713,43 @@ Respond as Theera, keeping in mind all safety guidelines and ensuring you only a
       await _addTherapistMessage("I'm here to provide a safe space for you to talk about whatever's on your mind.");
       await _addTherapistMessage("Before we begin, could you tell me your name and a little bit about what brought you here today?");
     } else {
-      // Send returning user messages with context
+      // Get the most recent session report for context
+      List<String> reportsJson = prefs.getStringList('sessionReports') ?? [];
+      String previousSummary = "";
+      List<String> previousTopics = [];
+      
+      if (reportsJson.isNotEmpty) {
+        try {
+          final reportMap = jsonDecode(reportsJson.last);
+          previousSummary = reportMap['summary'] ?? "";
+          previousTopics = List<String>.from(reportMap['topics'] ?? []);
+        } catch (e) {
+          print('Error reading previous session summary: $e');
+        }
+      }
+
+      // Send personalized welcome back messages
       if (userName.isNotEmpty) {
         await _addTherapistMessage("Welcome back, $userName! It's good to see you again.");
       } else {
         await _addTherapistMessage("Welcome back! It's good to see you again.");
       }
       
-      // Add follow-up based on previous session
-      if (_previousSessionContext.isNotEmpty) {
+      // Add follow-up based on previous session content
+      if (previousSummary.isNotEmpty) {
+        // Extract key points from previous summary
+        String keyPoints = previousSummary.split('.')[0]; // Get first sentence as key point
+        
+        await _addTherapistMessage("In our last session, we discussed $keyPoints");
+        
+        // Reference specific topics if available
+        if (previousTopics.isNotEmpty) {
+          String topicsText = previousTopics.join(', ');
+          await _addTherapistMessage("We talked about $topicsText. How have things been since then?");
+        } else {
+          await _addTherapistMessage("How have things been since our last conversation?");
+        }
+      } else if (_previousSessionContext.isNotEmpty) {
         await _addTherapistMessage("In our last session, we discussed: $_previousSessionContext");
         await _addTherapistMessage("How have things been since then?");
       } else {
@@ -1049,33 +1218,28 @@ Remember this context, but don't explicitly mention "your previous session" unle
     }
   }
 
-  // Add this method to handle emergency situations
+  // Update the emergency handling method
   void _handleEmergencySituation() {
-    // Immediately make the emergency call
-    if (Platform.isAndroid || Platform.isIOS) {
-      _makeEmergencyCall();
-    }
+    // Make the emergency call immediately
+    _makeEmergencyCall();
 
-    // Show crisis dialog
-    _showCrisisResourcesDialog();
-
-    // Add supportive messages
+    // Add urgent messages
     setState(() {
       messages.add({
         "isUser": false,
-        "message": "I'm very concerned about your safety right now. I'm connecting you with emergency support immediately.",
+        "message": "EMERGENCY ALERT: Connecting you with emergency services",
         "isEmergency": true
       });
     });
     _scrollToBottom();
 
-    // Add follow-up message after a short delay
-    Future.delayed(Duration(seconds: 2), () {
+    // Add follow-up message
+    Future.delayed(Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
           messages.add({
             "isUser": false,
-            "message": "Please stay on the line - help is on the way. Your life is valuable and there are people who want to help.",
+            "message": "Please stay on the line. Help is on the way. Emergency services have been notified.",
             "isEmergency": true
           });
         });
@@ -1084,44 +1248,183 @@ Remember this context, but don't explicitly mention "your previous session" unle
     });
   }
 
-  // Add method to make emergency call
+  // Update method to make emergency call
   void _makeEmergencyCall() async {
-    final Uri url = Uri.parse('tel:$EMERGENCY_CONTACT');
+    bool callInitiated = false;
+    
     try {
-      await launchUrl(url);
+      // For Android
+      if (Platform.isAndroid) {
+        final Uri url = Uri.parse('tel:$EMERGENCY_CONTACT');
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          callInitiated = true;
+        }
+      } 
+      // For iOS
+      else if (Platform.isIOS) {
+        final Uri url = Uri.parse('tel://$EMERGENCY_CONTACT');
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          callInitiated = true;
+        }
+      }
     } catch (e) {
       print('Error making emergency call: $e');
     }
+
+    // If call wasn't initiated, show the emergency modal
+    if (!callInitiated) {
+      _showEmergencyCallModal();
+    }
   }
 
-  // Add crisis resources dialog
-  void _showCrisisResourcesDialog() {
+  // Add modern emergency call modal
+  void _showEmergencyCallModal() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Emergency Support',
-            style: TextStyle(color: Colors.red),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('We\'re connecting you with emergency support.'),
-              SizedBox(height: 16),
-              Text('Emergency Contact: $EMERGENCY_CONTACT'),
-              SizedBox(height: 16),
-              Text('Please don\'t leave - help is on the way.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text('Call Now'),
-              onPressed: _makeEmergencyCall,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10.0,
+                  offset: Offset(0.0, 10.0),
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Pulsing emergency icon
+                _buildPulsingEmergencyIcon(),
+                SizedBox(height: 20),
+                Text(
+                  "Emergency Alert",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF269D9D),
+                  ),
+                ),
+                SizedBox(height: 15),
+                Text(
+                  "We need to connect you with emergency support immediately",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                SizedBox(height: 25),
+                // Big call button
+                GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    try {
+                      final Uri url = Uri.parse('telprompt://$EMERGENCY_CONTACT');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    } catch (e) {
+                      print('Error in fallback call: $e');
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 15),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF269D9D), Color(0xFF1E7D7D)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF269D9D).withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FaIcon(
+                          FontAwesomeIcons.phone,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          "Call Emergency Services",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 15),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Add pulsing emergency icon widget
+  Widget _buildPulsingEmergencyIcon() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.8, end: 1.2),
+      duration: Duration(milliseconds: 1000),
+      curve: Curves.easeInOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Color(0xFF269D9D).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: FaIcon(
+                FontAwesomeIcons.triangleExclamation,
+                color: Color(0xFF269D9D),
+                size: 40,
+              ),
+            ),
+          ),
         );
       },
     );
@@ -1235,5 +1538,51 @@ Remember this context, but don't explicitly mention "your previous session" unle
       print('Error in context generation: $e');
       return "Patient discussed personal challenges and explored potential coping strategies. Key emotions included anxiety and uncertainty. We identified specific triggers and discussed practical steps for managing stress.";
     }
+  }
+
+  // Update the emergency trigger check method
+  bool _checkEmergencyTriggers(String message) {
+    String lowercaseMsg = message.toLowerCase();
+    
+    // Count occurrences of high-risk words
+    int killCount = lowercaseMsg.split('kill').length - 1;
+    int suicideCount = lowercaseMsg.split('suicide').length - 1;
+    int dieCount = lowercaseMsg.split('die').length - 1;
+    int endLifeCount = lowercaseMsg.split('end my life').length - 1;
+    
+    // Check for specific patterns
+    bool hasImmediatePlan = lowercaseMsg.contains('tonight') && 
+                          (lowercaseMsg.contains('kill') || 
+                           lowercaseMsg.contains('suicide') ||
+                           lowercaseMsg.contains('end it'));
+    
+    bool hasGoodbyeMessage = lowercaseMsg.contains('goodbye forever') || 
+                           lowercaseMsg.contains('last message') ||
+                           lowercaseMsg.contains('final goodbye');
+    
+    bool hasGivingAway = lowercaseMsg.contains('giving away') && 
+                        (lowercaseMsg.contains('everything') || 
+                         lowercaseMsg.contains('possessions'));
+
+    // Check for violence against others with multiple occurrences
+    int violenceKeywordCount = 0;
+    for (var keyword in VIOLENCE_AGAINST_OTHERS_KEYWORDS) {
+      violenceKeywordCount += lowercaseMsg.split(keyword).length - 1;
+    }
+    bool hasViolenceAgainstOthers = violenceKeywordCount > 2;
+    
+    // Trigger emergency call if:
+    // 1. Word "kill" appears more than twice
+    // 2. Any combination of high-risk words appears more than 3 times
+    // 3. User mentions an immediate plan
+    // 4. User sends a final goodbye message
+    // 5. User mentions giving away possessions
+    // 6. User threatens violence against others more than twice
+    return killCount > 2 || 
+           (killCount + suicideCount + dieCount + endLifeCount) > 3 ||
+           hasImmediatePlan ||
+           hasGoodbyeMessage ||
+           hasGivingAway ||
+           hasViolenceAgainstOthers;
   }
 }

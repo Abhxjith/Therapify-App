@@ -13,11 +13,13 @@ class DashboardState extends State<Dashboard> {
   int totalSessions = 0;
   int exerciseCount = 0;
   DateTime? lastSessionDate;
+  bool isFirstSession = true;
 
   Future<void> loadSessionStats() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      totalSessions = prefs.getInt('totalSessions') ?? 0;
+      isFirstSession = prefs.getBool('isFirstSession') ?? true;
+      totalSessions = prefs.getInt('sessionCount') ?? 0;
       exerciseCount = prefs.getInt('exerciseCount') ?? 0;
       String? lastSessionDateStr = prefs.getString('lastSessionDate');
       if (lastSessionDateStr != null) {
@@ -34,6 +36,11 @@ class DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Don't show dashboard if it's the first session
+    if (isFirstSession) {
+      return SizedBox.shrink();
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -54,7 +61,7 @@ class DashboardState extends State<Dashboard> {
           Container(height: 40, width: 1, color: Colors.grey.withOpacity(0.2)),
           _buildDashboardItem("Exercise", exerciseCount.toString(), FontAwesomeIcons.leaf),
           Container(height: 40, width: 1, color: Colors.grey.withOpacity(0.2)),
-          _buildDashboardItem("Goals Met", "0", FontAwesomeIcons.circleCheck),
+          _buildDashboardItem("Goals Met", "1", FontAwesomeIcons.circleCheck),
         ],
       ),
     );
